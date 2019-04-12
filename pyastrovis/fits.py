@@ -89,6 +89,7 @@ class FITSImageCubeStream(object):
         elif self.bitpix == -64:
             self.dtype = '>f8'
             self.format = '>d'
+            self.format = '>d'
             self.byte_depth = 8
         else:
             raise Exception('unknown bitpix type')
@@ -98,6 +99,9 @@ class FITSImageCubeStream(object):
 
     async def close(self):
         await self.file_obj.close()
+        for i in self.file_list:
+            await self.loop.run_in_executor(None, os.close, i)
+        await self.loop.run_in_executor(None, self.pool.shutdown, True)
 
     def get_dtype(self):
         return self.dtype

@@ -14,19 +14,33 @@ class WebRTCStream(web.Application):
     class VideoStream(VideoStreamTrack):
         def __init__(self):
             super(VideoStreamTrack, self).__init__()
-            self.queue = asyncio.Queue(1)
-            self.stamp = 0
             self.loop = asyncio.get_running_loop()
+            self.lock = asyncio.Lock()
+            self.data = None
+            self.format = None
+            self.frame = av.VideoFrame(width=640, height=480)
+            for p in self.frame.planes:
+                p.update(bytes(p.buffer_size))
+
+        async def add_data(self, data, format):
+            async with self.lock:
+                self.data = data
+                self.format = format
 
         async def recv(self):
             try:
-                data, format = await self.queue.get()
-                self.queue.task_done()
-                frame = av.VideoFrame.from_ndarray(array=data, format=format)
                 pts, time_base = await self.next_timestamp()
-                frame.pts = pts
-                frame.time_base = time_base
-                return frame
+                async with self.lock:
+                    if self.data is None:
+                        self.frame.pts = pts
+                        self.frame.time_base = time_base
+                        return self.frame
+                    self.frame = av.VideoFrame.from_ndarray(array=self.data, format=self.format)
+                    self.data = None
+                    self.frame.pts = pts
+                    self.frame.time_base = time_base
+                    return self.frame
+
             except CancelledError:
                 raise MediaStreamError
             except Exception:
@@ -58,7 +72,7 @@ class WebRTCStream(web.Application):
     async def add_data(self, id, data, format):
         track = self.stream_tracks.get(id, None)
         if track:
-            await track[0].queue.put((data, format))
+            await track[0].add_data(data, format)
 
     async def close_endpoint(self, id):
         track = self.stream_tracks.get(id, None)

@@ -54,12 +54,11 @@ class WebRTCWidget(object):
         await self.runner.cleanup()
 
     @classmethod
-    async def create_server(cls, host='localhost', port=8080, url='http://localhost:8080'):
+    async def create_server(cls, host='localhost', port=8080, client_url='http://localhost:8080'):
         app = WebRTCStream()
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, host, port)
         await site.start()
-        #url = f"{'https://' if ssl else 'http://'}{host}:{port}"
-        return WebRTCWidget(app, runner, url)
+        return WebRTCWidget(app, runner, client_url)
 
