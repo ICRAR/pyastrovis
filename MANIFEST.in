@@ -1,0 +1,2 @@
+recursive-include pyastrovis/static *.*
+include pyastrovis.json
