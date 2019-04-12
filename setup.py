@@ -140,6 +140,14 @@ setup_args = {
     ],
     'install_requires': [
         'ipywidgets>=7.0.0',
+        'aiofiles',
+        'aiohttp',
+        'astropy',
+        'aiortc',
+        'av',
+        'uvloop',
+        'aiohttp-cors',
+        'opencv-python'
     ],
     'packages': find_packages(),
     'zip_safe': False,
