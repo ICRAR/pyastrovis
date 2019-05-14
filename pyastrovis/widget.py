@@ -54,8 +54,10 @@ class WebRTCWidget(object):
         await self.runner.cleanup()
 
     @classmethod
-    async def create_server(cls, host='localhost', port=8080, client_url='http://localhost:8080'):
-        app = WebRTCStream()
+    async def create_server(cls, host='localhost', port=8080,
+                            client_url='http://localhost:8080',
+                            buffer_queue_size=2):
+        app = WebRTCStream(buffer_queue_size)
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, host, port)

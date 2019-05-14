@@ -1,58 +1,35 @@
+import av
 import asyncio
 import json
-import av
 import aiohttp_cors
+import numpy as np
 
-from concurrent.futures import CancelledError
 from aiohttp import web
+from asyncio import Queue
 from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
-from aiortc.mediastreams import MediaStreamError, VIDEO_TIME_BASE, VIDEO_PTIME, VIDEO_CLOCK_RATE
 
 
 class WebRTCStream(web.Application):
 
     class VideoStream(VideoStreamTrack):
-        def __init__(self):
+        def __init__(self, buffer_queue_size):
             super(VideoStreamTrack, self).__init__()
+            self.q = Queue(buffer_queue_size)
             self.loop = asyncio.get_running_loop()
-            self.lock = asyncio.Lock()
-            self.data = None
-            self.format = None
-            self.frame = av.VideoFrame(width=640, height=480)
-            for p in self.frame.planes:
-                p.update(bytes(p.buffer_size))
 
         async def add_data(self, data, format):
-            async with self.lock:
-                self.data = data
-                self.format = format
+            copy = await self.loop.run_in_executor(None, np.copy, data)
+            await self.q.put((copy, format))
 
         async def recv(self):
-            try:
-                pts, time_base = await self.next_timestamp()
-                async with self.lock:
-                    if self.data is None:
-                        self.frame.pts = pts
-                        self.frame.time_base = time_base
-                        return self.frame
-                    self.frame = av.VideoFrame.from_ndarray(array=self.data, format=self.format)
-                    self.data = None
-                    self.frame.pts = pts
-                    self.frame.time_base = time_base
-                    return self.frame
+            data, format = await self.q.get()
+            frame = await self.loop.run_in_executor(None, av.VideoFrame.from_ndarray, data, format)
+            pts, time_base = await self.next_timestamp()
+            frame.pts = pts
+            frame.time_base = time_base
+            return frame
 
-            except CancelledError:
-                raise MediaStreamError
-            except Exception:
-                pts, time_base = await self.next_timestamp()
-                frame = av.VideoFrame(width=640, height=480)
-                for p in frame.planes:
-                    p.update(bytes(p.buffer_size))
-                frame.pts = pts
-                frame.time_base = time_base
-                return frame
-
-    def __init__(self, *args, **kwargs):
+    def __init__(self, buffer_queue_size, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         cors = aiohttp_cors.setup(self, defaults={
@@ -68,6 +45,7 @@ class WebRTCStream(web.Application):
 
         self.pcs = []
         self.stream_tracks = {}
+        self.buffer_queue_size = buffer_queue_size
 
     async def add_data(self, id, data, format):
         track = self.stream_tracks.get(id, None)
@@ -96,7 +74,7 @@ class WebRTCStream(web.Application):
                 await pc.close()
                 self.pcs.remove(pc)
 
-        stream = WebRTCStream.VideoStream()
+        stream = WebRTCStream.VideoStream(self.buffer_queue_size)
         sender = pc.addTrack(stream)
         self.stream_tracks[conn_id] = (stream, sender, pc)
 

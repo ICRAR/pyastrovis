@@ -89,7 +89,6 @@ class FITSImageCubeStream(object):
         elif self.bitpix == -64:
             self.dtype = '>f8'
             self.format = '>d'
-            self.format = '>d'
             self.byte_depth = 8
         else:
             raise Exception('unknown bitpix type')
