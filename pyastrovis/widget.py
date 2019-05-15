@@ -56,7 +56,7 @@ class WebRTCWidget(object):
     @classmethod
     async def create_server(cls, host='localhost', port=8080,
                             client_url='http://localhost:8080',
-                            buffer_queue_size=2):
+                            buffer_queue_size=1):
         app = WebRTCStream(buffer_queue_size)
         runner = web.AppRunner(app)
         await runner.setup()
