@@ -135,6 +135,12 @@ class FITSImageCubeStream(object):
         result = await asyncio.gather(*tasks)
         return list(itertools.chain(*result))
 
+    def _convert_data(self, data):
+        arr = np.frombuffer(data, dtype=self.dtype)
+        image_buff = np.lib.stride_tricks.as_strided(arr, (self.x, self.y))
+        image_buff = (image_buff * self.bscale) + self.bzero
+        return image_buff
+
     async def get_channel_data(self, channel):
         if not isinstance(channel, int):
             raise Exception('channel not an int')
@@ -148,9 +154,7 @@ class FITSImageCubeStream(object):
         offset = self.header_size_bytes+(self.image_size_bytes*channel)
         await self.file_obj.seek(offset)
         data = await self.file_obj.read(self.image_size_bytes)
-        arr = np.frombuffer(data, dtype=self.dtype)
-        image_buff = np.lib.stride_tricks.as_strided(arr, (self.x, self.y))
-        image_buff = (image_buff * self.bscale) + self.bzero
+        image_buff = await self.loop.run_in_executor(None, self._convert_data, data)
         return image_buff
 
     @staticmethod
