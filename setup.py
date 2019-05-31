@@ -147,7 +147,12 @@ setup_args = {
         'av',
         'uvloop',
         'aiohttp-cors',
-        'opencv-python'
+        'opencv-python',
+        'bqplot',
+        'matplotlib',
+        'scipy',
+        'ipyvolume',
+        'photutils',
     ],
     'packages': find_packages(),
     'zip_safe': False,
