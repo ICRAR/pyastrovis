@@ -44,7 +44,8 @@ def _get_spectral_line(file_no, pixel_x, pixel_y, width, byte_depth,
         offset = header_size_bytes + (image_size_bytes * channel) + (byte_depth * ((pixel_x * width) + pixel_y))
         os.lseek(file_no, offset, 0)
         val = struct.unpack(format, os.read(file_no, byte_depth))[0]
-        val = (val * bscale) + bzero
+        if not (bscale == 1.0 and bzero == 0.0):
+            val = (val * bscale) + bzero
         result[index] = val
     return result
 
@@ -138,7 +139,8 @@ class FITSImageCubeStream(object):
     def _convert_data(self, data):
         arr = np.frombuffer(data, dtype=self.dtype)
         image_buff = np.lib.stride_tricks.as_strided(arr, (self.x, self.y))
-        image_buff = (image_buff * self.bscale) + self.bzero
+        if not (self.bscale == 1.0 and self.bzero == 0.0):
+            image_buff = (image_buff * self.bscale) + self.bzero
         return image_buff
 
     async def get_channel_data(self, channel):
