@@ -1,5 +1,7 @@
 import uuid
+import asyncio
 import ipywidgets as widgets
+
 from traitlets import Unicode, Int, Tuple
 from aiohttp import web
 
@@ -63,4 +65,13 @@ class WebRTCWidget(object):
         site = web.TCPSite(runner, host, port)
         await site.start()
         return WebRTCWidget(app, runner, client_url)
+
+    @staticmethod
+    def wait_for_change(widget, value):
+        future = asyncio.Future()
+        def getvalue(change):
+            future.set_result(change.new)
+            widget.unobserve(getvalue, value)
+        widget.observe(getvalue, value)
+        return future
 

@@ -6,7 +6,7 @@ module.exports = {
 
         config.iceServers = [{urls: ['stun:stun.l.google.com:19302?transport=tcp']}];
 
-        let pc = new RTCPeerConnection(config);
+        let pc = new RTCPeerConnection();
 
         // register some listeners to help debugging
         pc.addEventListener('icegatheringstatechange', function () {
